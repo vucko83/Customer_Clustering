@@ -56,7 +56,7 @@ Create Clusters: K-MEANS
 
 '''
 
-k_means = KMeans(n_clusters = 3, init='k-means++', max_iter= 10000, n_init= 3, n_jobs=4).fit(test)
+k_means = KMeans(n_clusters = 3, init='k-means++', max_iter= 100000, n_init= 3, n_jobs=4).fit(test)
 clusters = k_means.predict(test)
 transactions['Cluster']= clusters
 cluster_counts = transactions['Cluster'].value_counts()
@@ -71,19 +71,28 @@ cluster_counts
 '''
 Visualize Cluster Centers
 '''
-
 centers = k_means.cluster_centers_[0]
-
 
 df=pd.DataFrame({'x': proizvodi, 'y': centers })
 
-
-
-plt.plot(x='x', y='y', data =df, color='skyblue' )
-plt.show()
-
-
 df_sorted = df.sort_values('y', ascending=False)
+
+
+df_sorted = df_sorted.set_index('x').join(sifarnik.set_index('groupID'))
+
+
+centro_cloud = df_sorted.set_index('groupSKU')
+
+tuples_dict = centro_cloud.to_dict()
+
+tuples_dict_for_vis = tuples_dict['y']
+
+
+wordcloud = WordCloud(relative_scaling=0.8, max_words = 200, max_font_size= 20, background_color='black').generate_from_frequencies(tuples_dict_for_vis)
+
+plt.imshow(wordcloud)
+plt.axis("off")
+plt.show()
 
 
 
@@ -97,9 +106,9 @@ Create Clusters: Hierarchical
 
 from sklearn.cluster import AgglomerativeClustering
 
-clt = AgglomerativeClustering(linkage='ward',
-                              affinity='euclidean',
-                              n_clusters=2)
+clt = AgglomerativeClustering(linkage='complete',
+                              affinity='cityblock',
+                              n_clusters=3)
 
 model = clt.fit(test.todense())
 
@@ -192,6 +201,7 @@ values_for_filter = ['']
 #values_for_filter = ['KAFA', 'VODA NEGAZIRANA', 'POLUTRAJNA ROBA', 'JOGURT NATUR', 'MLEKO SVEŽE', "MLEKO UHT 1L"]
 
 agg_for_word_cloud = new_agg.set_index('groupID').join(sifarnik.set_index('groupID'))
+
 agg_filtered = agg_for_word_cloud.loc[~agg_for_word_cloud['groupSKU'].isin(values_for_filter)]
 
 
