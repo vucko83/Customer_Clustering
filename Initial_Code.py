@@ -34,7 +34,7 @@ Create Clusters: K-MEANS
 
 '''
 
-k_means = KMeans(n_clusters = 3, init='k-means++', max_iter= 10000, n_init= 10, n_jobs=4).fit(test)
+k_means = KMeans(n_clusters = 4, init='k-means++', max_iter= 10000, n_init= 10, n_jobs=4).fit(test)
 clusters = k_means.predict(test)
 transactions['Cluster']= clusters
 cluster_counts = transactions['Cluster'].value_counts()
@@ -50,13 +50,19 @@ proizvodi.remove('Cluster')
 Visualize Cluster Centers
 '''
 
-centers = k_means.cluster_centers_[4]
+centers = k_means.cluster_centers_[2]
 
 
 df=pd.DataFrame({'x': proizvodi, 'y': centers })
 
-plt.plot('x', 'y' ,data =df, color='skyblue' )
+plt.plot(x='x', y='y', data =df, color='skyblue' )
 plt.show()
+
+
+df_sorted = df.sort_values('y', ascending=False)
+
+
+
 
 
 '''
@@ -65,16 +71,48 @@ Create Clusters: Hierarchical
 '''
 
 
+from sklearn.cluster import AgglomerativeClustering
+
+clt = AgglomerativeClustering(linkage='ward',
+                              affinity='euclidean',
+                              n_clusters=4)
+
+model = clt.fit(test.todense())
+
+
+transactions.columns
+
+
+transactions['Cluster'] = model.labels_
+
+cluster_counts = transactions['Cluster'].value_counts()
+
 cluster_counts
 
 '''
 Print WordCloud
 '''
 
-cluster_selection = transactions['Cluster'] == 0
+cluster_selection = transactions['Cluster'] == 2
 
-agg = transactions[cluster_selection]
-agg = agg.iloc[:, 1:-1].sum(axis=0)
+
+# From counts
+
+
+agg = test[cluster_selection]
+
+# From TF_IDF not Counts
+
+agg = pd.DataFrame(agg[cluster_selection].todense())
+
+
+agg.columns=proizvodi
+
+
+
+#agg = agg.iloc[:, 1:-1].sum(axis=0)
+
+agg = agg.mean(axis=0)
 
 new_agg=agg.reset_index()
 
@@ -95,13 +133,16 @@ tuples_dict = agg_filtered.to_dict()
 tuples_dict_for_vis = tuples_dict['Count']
 
 
-wordcloud = WordCloud(width=800, height=600, relative_scaling=0.8, max_words = 50, background_color='black').generate_from_frequencies(tuples_dict_for_vis)
+wordcloud = WordCloud(relative_scaling=0.8, max_words = 200, max_font_size= 20, background_color='black').generate_from_frequencies(tuples_dict_for_vis)
 
 plt.imshow(wordcloud)
 plt.axis("off")
 plt.show()
 
+agg_filtered.sort_values(by=['Count'], ascending=False).head(100)
 
+
+'''
 from mlxtend.frequent_patterns import apriori
 from mlxtend.frequent_patterns import association_rules
 
@@ -123,4 +164,7 @@ frequent_itemsets = apriori(mb_data, min_support=0.1, use_colnames=True)
 
 rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1)
 rules.head()
+
+
+'''
 
