@@ -6,72 +6,76 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
+import Prepare_Data
+from Prepare_Data import *
+from sklearn.metrics import silhouette_score
+import random
 
-
-from sklearn.mixture.gmm import GMM
-
-'''
-Read and prepare data
-'''
-
-
-transactions = pd.read_csv("premium_trans.csv")
-transactions= transactions.fillna(0)
-transactions = transactions.iloc[:, 1:]
-
-
-sifarnik = pd.read_csv('sifarnikGrupaProizvoda.csv', encoding='cp1252')
-
-sifarnik['groupSKU'] = sifarnik['groupSKU'].map(lambda x: x.split(' -')[0])
-
-
-scaler=MinMaxScaler(feature_range = (1,10)) # initialize scaler
-
-
-attributes = transactions.columns
-
-
-transactions=scaler.fit_transform(transactions)
-
-transactions =pd.DataFrame(transactions)
-
-
-transactions.columns = attributes
-
-
-transformer = TfidfTransformer().fit(transactions)
-
-
-test = transformer.transform(transactions)
-
-
-pca = PCA(n_components=20)
-test_pca = pca.fit_transform(test.todense())
-
-
-proizvodi = list(transactions.columns)
+random.seed(1589)
+import pickle
 
 '''
 Create Clusters: K-MEANS
 
 '''
 
-k_means = KMeans(n_clusters = 3, init='k-means++', max_iter= 100000, n_init= 3, n_jobs=4).fit(test)
+
+
+
+
+
+'''
+best_silhouette = -np.inf
+best_model = None
+for n_clust in range(2,6):
+    k_means = KMeans(n_clusters = n_clust, init='k-means++', max_iter= 500000, n_init= 3, n_jobs=4).fit(test)
+    clusters = k_means.predict(test)
+    if silhouette_score(test, clusters)>best_silhouette:
+        best_model = k_means
+
+clusters = best_model.predict(test)
+transactions['Cluster'] = clusters
+cluster_counts = transactions['Cluster'].value_counts()
+cluster_counts
+
+'''
+
+path_parts = ['premium', 'gold', 'silver', 'standard']
+
+
+
+for path_part in path_parts:
+
+    test, transactions,  proizvodi, sifarnik = prepare(path_data = path_part+"_trans.csv", path_sifarnik='sifarnikGrupeNovo.csv', scaling= True)
+
+    for n_clust in range(2,6):
+        k_means = KMeans(n_clusters = n_clust, init='k-means++', max_iter= 500000, n_init= 3, n_jobs=4).fit(test)
+        filename = 'Models/' + path_part + '_' +str(n_clust) +'.sav'
+        pickle.dump(k_means, open(filename, 'wb'))
+
+
+
+
+
+
+
+loaded_model = pickle.load(open('Models/premium_2.sav', 'rb'))
+
+loaded_model.predict(test)
+
 clusters = k_means.predict(test)
-transactions['Cluster']= clusters
+transactions['Cluster'] = clusters
 cluster_counts = transactions['Cluster'].value_counts()
 cluster_counts
 
 
-
-#proizvodi.remove('Cluster')
 
 
 
 '''
 Visualize Cluster Centers
 '''
-centers = k_means.cluster_centers_[0]
+centers = k_means.cluster_centers_[4]
 
 df=pd.DataFrame({'x': proizvodi, 'y': centers })
 
@@ -88,11 +92,17 @@ tuples_dict = centro_cloud.to_dict()
 tuples_dict_for_vis = tuples_dict['y']
 
 
-wordcloud = WordCloud(relative_scaling=0.8, max_words = 200, max_font_size= 20, background_color='black').generate_from_frequencies(tuples_dict_for_vis)
+wordcloud = WordCloud(relative_scaling=0.8, max_words = 200, max_font_size= 30, background_color='white').generate_from_frequencies(tuples_dict_for_vis)
+
+#wordcloud = WordCloud(background_color='white').generate_from_frequencies(tuples_dict_for_vis)
 
 plt.imshow(wordcloud)
 plt.axis("off")
+plt.savefig('Figures/initial_fig')
 plt.show()
+
+
+
 
 
 
